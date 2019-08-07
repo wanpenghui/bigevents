@@ -268,6 +268,12 @@
         </div>
     </div>
     <script src="./js/template-web.js"></script>
+    <script id="allArt" type="text/html">
+        <option value="">所有分类</option>
+        {{each data v}}
+        <option value="{{v.id}}">{{v.name}}</option>
+        {{/each}}
+    </script>
     <script id="article-list" type="text/html">
         {{each data.data v}}
         <tr>
@@ -289,14 +295,13 @@
             window.parent.setMenu(1, 1);
         })
         $(function () {
-            //声明全局变量存储文章分类
-            var allArt = null;
-            //一进入页面发送ajax请求获取所有的文章分类
+            //一进入页面发送ajax请求获取所有的文章分类,通过模板引擎渲染到页面
             $.ajax({
                 url: 'http://localhost:8080/admin/category/list',
                 success: function (backData) {
                     console.log(backData);
-                    allArt = backData.data;
+                    var res = template('allArt',backData);
+                    $('#selCategory').html(res);
                 }
             });
             //需求: 一进到文章列表页面,就显示真实的文章数据.
