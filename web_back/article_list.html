@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="css/iconfont.css">
     <link rel="stylesheet" href="css/main.css">
     <script src="js/jquery-1.12.4.min.js"></script>
+    <script src="./js/bootstrap/js/bootstrap.min.js"></script>
+    <script src="./js/jquery.twbsPagination.js"></script>
 </head>
 
 <body>
@@ -30,9 +32,9 @@
                             <option>爱旅行</option>
                         </select>
                         <select id="selStatus" name="" class="form-control input-sm">
-                            <option>所有状态</option>
-                            <option value="drafted">草稿</option>
-                            <option value="published">已发布</option>
+                            <option value="">所有状态</option>
+                            <option value="草稿">草稿</option>
+                            <option value="已发布">已发布</option>
                         </select>
                         <button id="btnSearch" class="btn btn-default btn-sm">筛选</button>
                     </form>
@@ -279,12 +281,12 @@
         <tr>
                 <td>{{v.title}}</td>
                 <td>{{v.author}}</td>
-                <td>{{v.categoryName}}</td>
+                <td>{{v.category}}</td>
                 <td class="text-center">{{v.date}}</td>
                 <td class="text-center">{{v.state}}</td>
                 <td class="text-center">
-                    <a href="article_edit.html" class="btn btn-default btn-xs">编辑</a>
-                    <a href="javascript:deleteTr( 1005 );" class="btn btn-danger btn-xs">删除</a>
+                    <a href="article_edit.html?id={{v.id}}" class="btn btn-default btn-xs">编辑</a>
+                    <a href="#" data-id="{{v.id}}" class="btn btn-danger btn-xs">删除</a>
                 </td>
             </tr>
         {{/each}}
@@ -300,37 +302,83 @@
                 url: 'http://localhost:8080/admin/category/list',
                 success: function (backData) {
                     console.log(backData);
-                    var res = template('allArt',backData);
+                    var res = template('allArt', backData);
                     $('#selCategory').html(res);
                 }
             });
+
+            //声明两个变量存储所有分类和所有状态的value值
+            var artrelease;
+            var artState;
+            //开关思想声明变量用于判断是否点击筛选按钮
+            var isTrue = true;
+            //点击筛选按钮按条件筛选并显示对应标签中
+            $('#btnSearch').on('click', function (e) {
+                e.preventDefault();
+                isTrue = false;
+                //获取所有分类所有状态的值
+                artrelease = $('#selCategory').val();
+                artState = $('#selStatus').val();
+                getArt(1, artrelease, artState);
+            });
+            //声明全局变量存储总页数
+            var allPage = 10;
+            //分页
+            var $pagination = $('.pagination');
+            var defaultOpts = {
+                //总页数
+                totalPages: allPage,
+                //可见页数
+                visiblePages: 5,
+                first: '首页',
+                prev: "上一页",
+                next: "下一页",
+                last: '尾页',
+                //事件什么时候触发: 点击分页插件的页码的时候触发
+                onPageClick: function (event, page) {
+                    //点击的事件
+                    //console.log(event);
+                    //page是当前点击的这个页码数.
+
+                    getArt(page, artrelease, artState);
+                }
+            };
+            $pagination.twbsPagination(defaultOpts);
             //需求: 一进到文章列表页面,就显示真实的文章数据.
             //1.一进到页面,就发送ajax请求.
-            $.ajax({
-                url: 'http://localhost:8080/admin/article/query',
-                data: {
-                    state: '已发布'
-                },
-                success: function (backData) {
-                    console.log(backData);
-                    if (backData.code == 200) {
-                        //遍历backData.data.data 添加文章分类的id
-                        for (var i = 0; i < backData.data.data.length; i++) {
-                            //遍历文章分类,判断backData.data.data.categoryId是否与文章分类的id相等
-                            for (var j = 0; j < allArt.length; j++) {
-                                //相等就将文章分类的分类名添加到backData.data.data中
-                                if (backData.data.data[i].categoryId == allArt[j].id) {
-                                    backData.data.data[i].categoryName = allArt[j].name;
-                                    break;
-                                };
-                            };
-                        };
-                        //将数据通过模板引擎渲染到页面
-                        var res = template('article-list', backData);
-                        $('tbody').html(res);
+            function getArt(myPage, artrelease, artState) {
+                $.ajax({
+                    url: 'http://localhost:8080/admin/article/query',
+                    data: {
+                        type: artrelease,
+                        state: artState,
+                        page: myPage,
+                        perpage: 5
+                    },
+                    success: function (backData) {
+                        console.log(backData);
+                        if (backData.code == 200) {
+                            //将数据通过模板引擎渲染到页面
+                            var res = template('article-list', backData);
+                            $('tbody').html(res);
+                            var totalPages = backData.data.totalPage; //获取总的页码数
+                            if (allPage != totalPages || isTrue == false) {
+                                allPage = totalPages
+                                var currentPage = $pagination.twbsPagination('getCurrentPage')//获取当前页
+                                $pagination.twbsPagination('destroy');
+                                //重新渲染页码条, 会自动的去执行一次onPageClick事件.
+                                $pagination.twbsPagination($.extend({}, defaultOpts, {
+                                    startPage: 1,
+                                    totalPages: totalPages
+                                }));
+
+                                //如果是筛选按钮,那就进来这个判断条件,做页码条的渲染
+                                isTrue = true;
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
         });
     </script>
 </body>
